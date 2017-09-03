@@ -7,7 +7,7 @@
 
 #define DEBUG_MODE 0
 
-#define PLUGIN_VERSION      "3.1.2"
+#define PLUGIN_VERSION      "3.1.3"
 
 public Plugin:myinfo =
 {
@@ -38,16 +38,15 @@ new g_iGiftsCount,
 	String:g_sGlobalPickUpSound[128],
 	Float:g_fGlobalLifeTime,
 	bool:g_bFromDeath = false,
-//	bool:g_bOnlyForEnemy = false,
 	bool:g_bIsCSGO = false;
 
 public OnPluginStart()
 {
 	CreateConVar("sm_gifts_core_version", PLUGIN_VERSION, "GIFTS-CORE VERSION", FCVAR_SPONLY|FCVAR_REPLICATED|FCVAR_NOTIFY|FCVAR_CHEAT|FCVAR_DONTRECORD);
 
-	g_hForward_OnLoadGift				= CreateGlobalForward("Gifts_OnLoadGift",			ET_Ignore,	Param_Cell, Param_Cell);
-	g_hForward_OnCreatedGift			= CreateGlobalForward("Gifts_OnCreatedGift",		ET_Ignore,	Param_Cell, Param_Cell);
-	g_hForward_OnPickUpGift_Pre		= CreateGlobalForward("Gifts_OnPickUpGift_Pre",	ET_Hook,	Param_Cell, Param_Cell);
+	g_hForward_OnLoadGift			= CreateGlobalForward("Gifts_OnLoadGift",			ET_Ignore,	Param_Cell, Param_Cell);
+	g_hForward_OnCreatedGift		= CreateGlobalForward("Gifts_OnCreatedGift",		ET_Ignore,	Param_Cell, Param_Cell);
+	g_hForward_OnPickUpGift_Pre		= CreateGlobalForward("Gifts_OnPickUpGift_Pre",		ET_Hook,	Param_Cell, Param_Cell);
 	g_hForward_OnPickUpGift_Post	= CreateGlobalForward("Gifts_OnPickUpGift_Post",	ET_Ignore,	Param_Cell, Param_Cell);
 
 	HookEvent("player_death", Event_PlayerDeath);
@@ -82,7 +81,7 @@ public OnConfigsExecuted()
 		UTIL_LoadModel(g_sGlobalModel);
 
 		KvGetString(g_hKeyValues, "Default_SpawnSound", SZF(g_sGlobalSpawnSound), "items/gift_drop.wav");
-		UTIL_LoadSound(SZF(g_sGlobalSpawnSound));
+		UTIL_LoadSound(g_sGlobalSpawnSound);
 		
 		if(g_bIsCSGO)
 		{
@@ -90,7 +89,7 @@ public OnConfigsExecuted()
 		}
 
 		KvGetString(g_hKeyValues, "Default_PickUpSound", SZF(g_sGlobalPickUpSound), "items/gift_drop.wav");
-		UTIL_LoadSound(SZF(g_sGlobalPickUpSound));
+		UTIL_LoadSound(g_sGlobalPickUpSound);
 
 		if(g_bIsCSGO)
 		{
@@ -99,14 +98,12 @@ public OnConfigsExecuted()
 
 		g_fGlobalLifeTime = KvGetFloat(g_hKeyValues, "Default_Lifetime", 15.0);
 		g_bFromDeath = bool:KvGetNum(g_hKeyValues, "Gift_Death");
-	//	g_bOnlyForEnemy = bool:KvGetNum(g_hKeyValues, "Only_for_enemy");
 
 		if(KvGotoFirstSubKey(g_hKeyValues))
 		{
 			do
 			{
-				++g_iGiftsCount;
-				IntToString(g_iGiftsCount, sBuffer, 16);
+				IntToString(++g_iGiftsCount, sBuffer, 16);
 				KvSetSectionName(g_hKeyValues, sBuffer);
 				
 				Forward_OnLoadGift(g_iGiftsCount);
@@ -117,16 +114,16 @@ public OnConfigsExecuted()
 				{
 					if(!strcmp(sBuffer, g_sGlobalModel) || !UTIL_LoadModel(sBuffer))
 					{
-						KvSetString(g_hKeyValues, "Model", "");
+						KvSetString(g_hKeyValues, "Model", NULL_STRING);
 					}
 				}
 
 				KvGetString(g_hKeyValues, "SpawnSound", SZF(sBuffer));
 				if(sBuffer[0])
 				{
-					if(!strcmp(sBuffer, g_sGlobalSpawnSound) || !UTIL_LoadSound(SZF(sBuffer)))
+					if(!strcmp(sBuffer, g_sGlobalSpawnSound) || !UTIL_LoadSound(sBuffer))
 					{
-						KvSetString(g_hKeyValues, "SpawnSound", "");
+						KvSetString(g_hKeyValues, "SpawnSound", NULL_STRING);
 					}
 					else if(g_bIsCSGO)
 					{
@@ -138,9 +135,9 @@ public OnConfigsExecuted()
 				KvGetString(g_hKeyValues, "PickUpSound", SZF(sBuffer));
 				if(sBuffer[0])
 				{
-					if(!strcmp(sBuffer, g_sGlobalPickUpSound) || !UTIL_LoadSound(SZF(sBuffer)))
+					if(!strcmp(sBuffer, g_sGlobalPickUpSound) || !UTIL_LoadSound(sBuffer))
 					{
-						KvSetString(g_hKeyValues, "PickUpSound", "");
+						KvSetString(g_hKeyValues, "PickUpSound", NULL_STRING);
 					}
 					else if(g_bIsCSGO)
 					{
@@ -208,7 +205,7 @@ ReadDownloads()
 	}
 }
 
-bool:UTIL_LoadSound(String:sSound[], iMaxLen)
+bool:UTIL_LoadSound(String:sSound[])
 {
 	if(sSound[0])
 	{
@@ -221,7 +218,6 @@ bool:UTIL_LoadSound(String:sSound[], iMaxLen)
 			
 			if(g_bIsCSGO)
 			{
-				Format(sSound, iMaxLen, "*%s", sSound);
 				AddToStringTable(FindStringTable("soundprecache"), sSound);
 			}
 			else
@@ -264,7 +260,7 @@ public Event_PlayerDeath(Handle:hEvent, const String:sEvName[], bool:bDontBroadc
 			if(iAttaker > 0 && iClient != iAttaker && GetClientTeam(iClient) != GetClientTeam(iAttaker))
 			{
 				decl iGift, String:sBuffer[16];
-				iGift = Math_GetRandomInt(0, g_iGiftsCount-1);
+				iGift = Math_GetRandomInt(1, g_iGiftsCount);
 				IntToString(iGift, SZF(sBuffer));
 				KvRewind(g_hKeyValues);
 				if(KvJumpToKey(g_hKeyValues, sBuffer))
@@ -331,7 +327,7 @@ SpawnGift(iClient = 0, const Float:fPos[3], index)
 				DispatchKeyValue(iRotating, "spawnflags", "64");
 				DispatchSpawn(iRotating);
 				
-			//	SetEntPropEnt(iRotating, Prop_Send, "m_hOwnerEntity", iEntity);
+				SetEntPropEnt(iRotating, Prop_Send, "m_hOwnerEntity", iEntity);
 
 				SetVariantString("!activator");
 				AcceptEntityInput(iEntity, "SetParent", iRotating, iRotating);
@@ -365,20 +361,6 @@ public Hook_GiftStartTouchPost(iEntity, iClient)
 	#endif
 	if (iClient > 0 && iClient <= MCL && IsPlayerAlive(iClient) && !IsFakeClient(iClient))
 	{
-		/*
-		if(g_bOnlyForEnemy)
-		{
-			new iOwner = GetEntPropEnt(iEntity, Prop_Send, "m_hOwnerEntity");
-			if(iOwner > 0 && IsClientInGame(iOwner))
-			{
-				if(GetClientTeam(iClient) == GetClientTeam(iOwner))
-				{
-					return;
-				}
-			}
-		}
-		*/
-		
 		#if DEBUG_MODE
 		DEBUG_PrintToAll("Hook_GiftStartTouch:: true");
 		#endif
@@ -486,14 +468,10 @@ ReplaceName(String:sBuffer[], MaxLen, iClient)
 
 EditText(String:sBuffer[], iMaxLen)
 {
-	ReplaceString(sBuffer, iMaxLen, "\\n",	"\n");
-	ReplaceString(sBuffer, iMaxLen, "#",	"\x07");
-	ReplaceString(sBuffer, iMaxLen, "{DEFAULT}",	"\x01");
-	ReplaceString(sBuffer, iMaxLen, "{GREEN}",		"\x04");
-	ReplaceString(sBuffer, iMaxLen, "{LIGHTGREEN}",	"\x03");
-
 	if(g_bIsCSGO)
 	{
+		Format(sBuffer, iMaxLen, " \x01%s", sBuffer);
+	
 		ReplaceString(sBuffer, iMaxLen, "{RED}",		"\x02", false);
 		ReplaceString(sBuffer, iMaxLen, "{LIME}",		"\x05", false);
 		ReplaceString(sBuffer, iMaxLen, "{LIGHTGREEN}",	"\x06", false);
@@ -504,9 +482,17 @@ EditText(String:sBuffer[], iMaxLen)
 		ReplaceString(sBuffer, iMaxLen, "{PURPLE}",		"\x0E", false);
 		ReplaceString(sBuffer, iMaxLen, "{LIGHTBLUE}",	"\x0B", false);
 		ReplaceString(sBuffer, iMaxLen, "{BLUE}",		"\x0C", false);
-		
-		Format(sBuffer, iMaxLen, " \x01%s", sBuffer);
 	}
+	else
+	{
+		Format(sBuffer, iMaxLen, "\x01%s", sBuffer);
+	}
+	
+	ReplaceString(sBuffer, iMaxLen, "\\n",	"\n");
+	ReplaceString(sBuffer, iMaxLen, "#",	"\x07");
+	ReplaceString(sBuffer, iMaxLen, "{DEFAULT}",	"\x01");
+	ReplaceString(sBuffer, iMaxLen, "{GREEN}",		"\x04");
+	ReplaceString(sBuffer, iMaxLen, "{LIGHTGREEN}",	"\x03");
 }
 
 Math_GetRandomInt(min, max)
