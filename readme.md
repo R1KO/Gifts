@@ -2,6 +2,19 @@
 
 Плагин позволяет создавать подарки, за поднятие которых игроки получают бонусы.
 
+# v3.2
+
+### Что изменено:
+- Исправлена работа звуков в CS:GO (теперь точно)
+- Расширено API:
+	- Добавлены нативы:
+		- *Gifts_GetGiftsCount*
+		- *Gifts_GetConfig*
+		- *Gifts_CreateGift*
+	- Форвард *Gifts_OnCreatedGift* заменен на 2 других
+		- *Gifts_OnCreateGift_Pre*
+		- *Gifts_OnCreateGift_Post*
+
 # v3.1.3
 
 ### Что изменено:

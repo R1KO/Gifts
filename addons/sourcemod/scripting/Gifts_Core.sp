@@ -7,7 +7,7 @@
 
 #define DEBUG_MODE 0
 
-#define PLUGIN_VERSION      "3.1.3"
+#define PLUGIN_VERSION      "3.2"
 
 public Plugin:myinfo =
 {
@@ -28,7 +28,8 @@ public Plugin:myinfo =
 new Handle:g_hKeyValues;
 
 new Handle:g_hForward_OnLoadGift,
-	Handle:g_hForward_OnCreatedGift,
+	Handle:g_hForward_OnCreateGift_Pre,
+	Handle:g_hForward_OnCreateGift_Post,
 	Handle:g_hForward_OnPickUpGift_Pre,
 	Handle:g_hForward_OnPickUpGift_Post;
 
@@ -45,7 +46,8 @@ public OnPluginStart()
 	CreateConVar("sm_gifts_core_version", PLUGIN_VERSION, "GIFTS-CORE VERSION", FCVAR_SPONLY|FCVAR_REPLICATED|FCVAR_NOTIFY|FCVAR_CHEAT|FCVAR_DONTRECORD);
 
 	g_hForward_OnLoadGift			= CreateGlobalForward("Gifts_OnLoadGift",			ET_Ignore,	Param_Cell, Param_Cell);
-	g_hForward_OnCreatedGift		= CreateGlobalForward("Gifts_OnCreatedGift",		ET_Ignore,	Param_Cell, Param_Cell);
+	g_hForward_OnCreateGift_Pre		= CreateGlobalForward("Gifts_OnCreateGift_Pre",		ET_Hook,	Param_Cell, Param_Cell);
+	g_hForward_OnCreateGift_Post	= CreateGlobalForward("Gifts_OnCreateGift_Post",	ET_Ignore,	Param_Cell, Param_Cell, Param_Cell);
 	g_hForward_OnPickUpGift_Pre		= CreateGlobalForward("Gifts_OnPickUpGift_Pre",		ET_Hook,	Param_Cell, Param_Cell);
 	g_hForward_OnPickUpGift_Post	= CreateGlobalForward("Gifts_OnPickUpGift_Post",	ET_Ignore,	Param_Cell, Param_Cell);
 
@@ -82,7 +84,7 @@ public OnConfigsExecuted()
 
 		KvGetString(g_hKeyValues, "Default_SpawnSound", SZF(g_sGlobalSpawnSound), "items/gift_drop.wav");
 		UTIL_LoadSound(g_sGlobalSpawnSound);
-		
+
 		if(g_bIsCSGO)
 		{
 			Format(SZF(g_sGlobalSpawnSound), "*%s", g_sGlobalSpawnSound);
@@ -107,7 +109,6 @@ public OnConfigsExecuted()
 				KvSetSectionName(g_hKeyValues, sBuffer);
 				
 				Forward_OnLoadGift(g_iGiftsCount);
-				//	LogMessage("LoadGift: '%s'", sBuffer);
 
 				KvGetString(g_hKeyValues, "Model", SZF(sBuffer));
 				if(sBuffer[0])
@@ -215,10 +216,14 @@ bool:UTIL_LoadSound(String:sSound[])
 		if(FileExists(sBuffer, true) || FileExists(sBuffer))
 		{
 			AddFileToDownloadsTable(sBuffer);
-			
+
 			if(g_bIsCSGO)
 			{
-				AddToStringTable(FindStringTable("soundprecache"), sSound);
+				if(g_bIsCSGO)
+				{
+					FormatEx(SZF(sBuffer), "*%s", sSound);
+				}
+				AddToStringTable(FindStringTable("soundprecache"), sBuffer);
 			}
 			else
 			{
@@ -246,7 +251,7 @@ bool:UTIL_LoadModel(const String:sModel[])
 
 public Event_PlayerDeath(Handle:hEvent, const String:sEvName[], bool:bDontBroadcast)
 {
-	if(GameRules_GetProp("m_bWarmupPeriod"))
+	if(g_bIsCSGO && GameRules_GetProp("m_bWarmupPeriod"))
 	{
 		return;
 	}
@@ -267,10 +272,13 @@ public Event_PlayerDeath(Handle:hEvent, const String:sEvName[], bool:bDontBroadc
 				{
 					if (Math_GetRandomInt(0, 100) <= KvGetNum(g_hKeyValues, "Chance", 20))
 					{
-						decl Float:fPos[3];
-						GetClientAbsOrigin(iClient, fPos);
-						fPos[2] -= 40.0;
-						SpawnGift(iClient, fPos, iGift);
+						if(Forward_OnCreateGift_Pre(iClient, g_hKeyValues) == Plugin_Continue)
+						{
+							decl Float:fPos[3];
+							GetClientAbsOrigin(iClient, fPos);
+							fPos[2] -= 40.0;
+							SpawnGift(iClient, fPos, iGift, g_hKeyValues);
+						}
 					}
 				}
 			}
@@ -278,7 +286,7 @@ public Event_PlayerDeath(Handle:hEvent, const String:sEvName[], bool:bDontBroadc
 	}
 }
 
-SpawnGift(iClient = 0, const Float:fPos[3], index)
+SpawnGift(iClient = 0, const Float:fPos[3], index = -1, Handle:hKeyValues)
 {
 	#if DEBUG_MODE
 	DEBUG_PrintToAll("SpawnGift: %i", index);
@@ -297,7 +305,7 @@ SpawnGift(iClient = 0, const Float:fPos[3], index)
 		DispatchKeyValue(iEntity, "massScale", "1.0");
 		DispatchKeyValue(iEntity, "classname", "gift");
 		DispatchKeyValueVector(iEntity, "origin", fPos);
-		KvGetString(g_hKeyValues, "Model", SZF(sBuffer));
+		KvGetString(hKeyValues, "Model", SZF(sBuffer));
 		DispatchKeyValue(iEntity, "model", sBuffer[0] ? sBuffer:g_sGlobalModel);
 
 		DispatchKeyValue(iEntity, "targetname", sTargetName);
@@ -308,13 +316,13 @@ SpawnGift(iClient = 0, const Float:fPos[3], index)
 			
 		//	TeleportEntity(iEntity, fPos, NULL_VECTOR, NULL_VECTOR);
 
-			FormatEx(SZF(sBuffer), "OnUser1 !self:kill::%0.2f:-1", KvGetFloat(g_hKeyValues, "Lifetime", g_fGlobalLifeTime));
+			FormatEx(SZF(sBuffer), "OnUser1 !self:kill::%0.2f:-1", KvGetFloat(hKeyValues, "Lifetime", g_fGlobalLifeTime));
 			SetVariantString(sBuffer);
 			AcceptEntityInput(iEntity, "AddOutput"); 
 			AcceptEntityInput(iEntity, "FireUser1");
 			SetEntPropEnt(iEntity, Prop_Send, "m_hOwnerEntity", iClient);
 
-			if(KvGetNum(g_hKeyValues, "Rotate", 1))
+			if(KvGetNum(hKeyValues, "Rotate", 1))
 			{
 				new iRotating = CreateEntityByName("func_rotating");
 				DispatchKeyValueVector(iRotating, "origin", fPos);
@@ -340,13 +348,13 @@ SpawnGift(iClient = 0, const Float:fPos[3], index)
 			{
 				SetEntityMoveType(iEntity, MOVETYPE_NONE);
 			}
-			
-			Forward_OnCreatedGift(iEntity);
 
 			SDKHook(iEntity, SDKHook_StartTouchPost, Hook_GiftStartTouchPost);
-			
-			KvGetString(g_hKeyValues, "SpawnSound", SZF(sBuffer));
+	
+			KvGetString(hKeyValues, "SpawnSound", SZF(sBuffer));
 			EmitAmbientSound(sBuffer[0] ? sBuffer:g_sGlobalSpawnSound, fPos, iEntity, SNDLEVEL_NORMAL);
+
+			Forward_OnCreateGift_Post(iClient, iEntity, hKeyValues);
 
 			return iEntity;
 		}
@@ -527,11 +535,24 @@ Forward_OnLoadGift(index)
 	Call_Finish();
 }
 
-Forward_OnCreatedGift(iEntity)
+Action:Forward_OnCreateGift_Pre(iClient, Handle:hKeyValues)
 {
-	Call_StartForward(g_hForward_OnCreatedGift);
+	new Action:result = Plugin_Continue;
+
+	Call_StartForward(g_hForward_OnCreateGift_Pre);
+	Call_PushCell(iClient);
+	Call_PushCell(hKeyValues);
+	Call_Finish(result);
+	
+	return result;
+}
+
+Forward_OnCreateGift_Post(iClient, iEntity, Handle:hKeyValues)
+{
+	Call_StartForward(g_hForward_OnCreateGift_Post);
+	Call_PushCell(iClient);
 	Call_PushCell(iEntity);
-	Call_PushCell(g_hKeyValues);
+	Call_PushCell(hKeyValues);
 	Call_Finish();
 }
 
@@ -557,7 +578,95 @@ Forward_OnPickUpGift_Post(iClient)
 
 public APLRes:AskPluginLoad2(Handle:myself, bool:late, String:error[], err_max) 
 {
+	CreateNative("Gifts_GetGiftsCount", Native_GetGiftsCount);
+	CreateNative("Gifts_GetConfig", Native_GetConfig);
+
+	CreateNative("Gifts_CreateGift", Native_CreateGift);
+
 	RegPluginLibrary("gifts_core");
 
 	return APLRes_Success; 
+}
+
+public Native_GetGiftsCount(Handle:hPlugin, iNumParams)
+{
+	return g_iGiftsCount;
+}
+
+public Native_GetConfig(Handle:hPlugin, iNumParams)
+{
+	KvRewind(g_hKeyValues);
+	return _:g_hKeyValues;
+}
+
+public Native_CreateGift(Handle:hPlugin, iNumParams)
+{
+	new iClient = GetNativeCell(1);
+	if(iClient < 0 || iClient > MCL)
+	{
+		ThrowNativeError(SP_ERROR_NATIVE, "Некорректный индекс игрока (%d)", iClient);
+		return -1;
+	}
+	if(!IsClientInGame(iClient))
+	{
+		ThrowNativeError(SP_ERROR_NATIVE, "Игрок %d не подключен", iClient);
+		return -1;
+	}
+	
+	new iGift = GetNativeCell(3);
+	if(iGift > g_iGiftsCount || iGift < -1)
+	{
+		ThrowNativeError(SP_ERROR_NATIVE, "Некорректный индекс подарка (%d)", iGift);
+		return -1;
+	}
+	
+	decl Float:fPos[3];
+	GetNativeArray(2, fPos, 3);
+	
+	switch(iGift)
+	{
+		case -1:
+		{
+			decl String:sBuffer[16];
+			iGift = Math_GetRandomInt(1, g_iGiftsCount);
+			IntToString(iGift, SZF(sBuffer));
+			KvRewind(g_hKeyValues);
+			if(KvJumpToKey(g_hKeyValues, sBuffer))
+			{
+				if(Forward_OnCreateGift_Pre(iClient, g_hKeyValues) == Plugin_Continue)
+				{
+					return SpawnGift(iClient, fPos, iGift, g_hKeyValues);
+				}
+			}
+		}
+		case 0:
+		{
+			new Handle:hKeyValues = Handle:GetNativeCell(4);
+			if(hKeyValues == INVALID_HANDLE)
+			{
+				ThrowNativeError(SP_ERROR_NATIVE, "Нужно указать либо корректный индекс либо структуру");
+				return -1;
+			}
+
+			if(Forward_OnCreateGift_Pre(iClient, hKeyValues) == Plugin_Continue)
+			{
+				return SpawnGift(iClient, fPos, iGift, hKeyValues);
+			}
+		}
+		default:
+		{
+			decl String:sBuffer[16];
+			IntToString(iGift, SZF(sBuffer));
+			KvRewind(g_hKeyValues);
+			if(KvJumpToKey(g_hKeyValues, sBuffer))
+			{
+				if(Forward_OnCreateGift_Pre(iClient, g_hKeyValues) == Plugin_Continue)
+				{
+					return SpawnGift(iClient, fPos, iGift, g_hKeyValues);
+				}
+			}
+		}
+	}
+
+	return -1;
 }
