@@ -7,7 +7,7 @@
 
 #define DEBUG_MODE 0
 
-#define PLUGIN_VERSION      "3.2"
+#define PLUGIN_VERSION      "3.3"
 
 public Plugin:myinfo =
 {
@@ -322,7 +322,8 @@ SpawnGift(iClient = 0, const Float:fPos[3], index = -1, Handle:hKeyValues)
 			AcceptEntityInput(iEntity, "FireUser1");
 			SetEntPropEnt(iEntity, Prop_Send, "m_hOwnerEntity", iClient);
 
-			if(KvGetNum(hKeyValues, "Rotate", 1))
+			new iRotate = KvGetNum(hKeyValues, "Rotate");
+			if(iRotate)
 			{
 				new iRotating = CreateEntityByName("func_rotating");
 				DispatchKeyValueVector(iRotating, "origin", fPos);
@@ -343,10 +344,31 @@ SpawnGift(iClient = 0, const Float:fPos[3], index = -1, Handle:hKeyValues)
 				FormatEx(SZF(sBuffer), "%s,Kill,,0,-1", sTargetName);
 				DispatchKeyValue(iEntity, "OnKilled", sBuffer);
 				AcceptEntityInput(iRotating, "Start");
+				
+				if(iRotate == -1)
+				{
+					AcceptEntityInput(iRotating, "Reverse");
+				}
 			}
 			else
 			{
 				SetEntityMoveType(iEntity, MOVETYPE_NONE);
+			}
+			
+			if(KvJumpToKey(hKeyValues, "Animations"))
+			{
+				if(KvGotoFirstSubKey(hKeyValues, false))
+				{
+					decl String:szAnimation[64];
+					do
+					{
+						KvGetString(hKeyValues, NULL_STRING, SZF(szAnimation));
+						SetVariantString(szAnimation);
+						AcceptEntityInput(iEntity, "SetAnimation");
+					} while (KvGotoNextKey(hKeyValues, false));
+					KvGoBack(hKeyValues);
+				}
+				KvGoBack(hKeyValues);
 			}
 
 			SDKHook(iEntity, SDKHook_StartTouchPost, Hook_GiftStartTouchPost);
@@ -537,14 +559,14 @@ Forward_OnLoadGift(index)
 
 Action:Forward_OnCreateGift_Pre(iClient, Handle:hKeyValues)
 {
-	new Action:result = Plugin_Continue;
+	new Action:eResult = Plugin_Continue;
 
 	Call_StartForward(g_hForward_OnCreateGift_Pre);
 	Call_PushCell(iClient);
 	Call_PushCell(hKeyValues);
-	Call_Finish(result);
+	Call_Finish(eResult);
 	
-	return result;
+	return eResult;
 }
 
 Forward_OnCreateGift_Post(iClient, iEntity, Handle:hKeyValues)
@@ -558,14 +580,14 @@ Forward_OnCreateGift_Post(iClient, iEntity, Handle:hKeyValues)
 
 Action:Forward_OnPickUpGift_Pre(iClient)
 {
-	new Action:result = Plugin_Continue;
+	new Action:eResult = Plugin_Continue;
 
 	Call_StartForward(g_hForward_OnPickUpGift_Pre);
 	Call_PushCell(iClient);
 	Call_PushCell(g_hKeyValues);
-	Call_Finish(result);
+	Call_Finish(eResult);
 	
-	return result;
+	return eResult;
 }
 
 Forward_OnPickUpGift_Post(iClient)
