@@ -121,26 +121,6 @@ public OnConfigsExecuted()
 
 				UTIL_ParseSound("SpawnSound", SZF(sBuffer), g_sGlobalSpawnSound);
 				UTIL_ParseSound("PickUpSound", SZF(sBuffer), g_sGlobalPickUpSound);
-				/*
-				KvGetString(g_hKeyValues, "TextToAll", SZF(sBuffer));
-				if(sBuffer[0])
-				{
-					//	LogMessage("TextToAll: '%s'", sBuffer);
-					EditText(SZF(sBuffer));
-					//	LogMessage("EditText->TextToAll: '%s'", sBuffer);
-					KvSetString(g_hKeyValues, "TextToAll", sBuffer);
-				}
-
-				KvGetString(g_hKeyValues, "TextToPlayer", SZF(sBuffer));
-				if(sBuffer[0])
-				{
-					//	LogMessage("TextToPlayer: '%s'", sBuffer);
-					EditText(SZF(sBuffer));
-					//	LogMessage("EditText->TextToPlayer: '%s'", sBuffer);
-					KvSetString(g_hKeyValues, "TextToPlayer", sBuffer);
-				}*/
-				
-
 			} while (KvGotoNextKey(g_hKeyValues));
 		}
 		
@@ -163,11 +143,16 @@ ReadDownloads()
 
 	if (hFile != INVALID_HANDLE)
 	{
-		decl String:sBuffer[PMP];
+		decl String:sBuffer[PMP], iPosition;
 		while (!IsEndOfFile(hFile) && ReadFileLine(hFile, SZF(sBuffer)))
 		{
+			if ((iPosition = StrContains(sBuffer, "//")) != -1)
+			{
+				sBuffer[iPosition] = 0;
+			}
+
 			TrimString(sBuffer);
-			if(sBuffer[0] && IsCharAlpha(sBuffer[0]) && StrContains(sBuffer, "//") == -1 && FileExists(sBuffer))
+			if(sBuffer[0] && (FileExists(sBuffer, true) || FileExists(sBuffer, false)))
 			{
 				AddFileToDownloadsTable(sBuffer);
 			}
