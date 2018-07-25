@@ -119,34 +119,8 @@ public OnConfigsExecuted()
 					}
 				}
 
-				KvGetString(g_hKeyValues, "SpawnSound", SZF(sBuffer));
-				if(sBuffer[0])
-				{
-					if(!strcmp(sBuffer, g_sGlobalSpawnSound) || !UTIL_LoadSound(sBuffer))
-					{
-						KvSetString(g_hKeyValues, "SpawnSound", NULL_STRING);
-					}
-					else if(g_bIsCSGO)
-					{
-						FormatEx(SZF(sPath), "*%s", sBuffer);
-						KvSetString(g_hKeyValues, "SpawnSound", sPath);
-					}
-				}
-
-				KvGetString(g_hKeyValues, "PickUpSound", SZF(sBuffer));
-				if(sBuffer[0])
-				{
-					if(!strcmp(sBuffer, g_sGlobalPickUpSound) || !UTIL_LoadSound(sBuffer))
-					{
-						KvSetString(g_hKeyValues, "PickUpSound", NULL_STRING);
-					}
-					else if(g_bIsCSGO)
-					{
-						FormatEx(SZF(sPath), "*%s", sBuffer);
-						KvSetString(g_hKeyValues, "PickUpSound", sPath);
-					}
-				}
-
+				UTIL_ParseSound("SpawnSound", SZF(sBuffer), g_sGlobalSpawnSound);
+				UTIL_ParseSound("PickUpSound", SZF(sBuffer), g_sGlobalPickUpSound);
 				/*
 				KvGetString(g_hKeyValues, "TextToAll", SZF(sBuffer));
 				if(sBuffer[0])
@@ -203,6 +177,23 @@ ReadDownloads()
 	else
 	{
 		LogError("[Gifts] Core: Не удалось открыть файл 'addons/sourcemod/configs/giftsdownloadlist.ini'");
+	}
+}
+
+UTIL_ParseSound(const String:sKey[], String:sBuffer[], iMaxLen, const String:sDefaultSound[])
+{
+	KvGetString(g_hKeyValues, sKey, sBuffer, iMaxLen);
+	if(sBuffer[0])
+	{
+		if(!strcmp(sBuffer, sSound) || !UTIL_LoadSound(sBuffer))
+		{
+			KvSetString(g_hKeyValues, sKey, NULL_STRING);
+		}
+		else if(g_bIsCSGO)
+		{
+			Format(sBuffer, iMaxLen, "*%s", sBuffer);
+			KvSetString(g_hKeyValues, sKey, sBuffer);
+		}
 	}
 }
 
