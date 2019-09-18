@@ -279,7 +279,7 @@ SpawnGift(iClient = 0, const Float:fPos[3], index = -1, Handle:hKeyValues)
 		DispatchKeyValue(iEntity, "solid", "6");
 		DispatchKeyValue(iEntity, "physicsmode", "2");
 		DispatchKeyValue(iEntity, "massScale", "1.0");
-		DispatchKeyValue(iEntity, "classname", "gift");
+		// DispatchKeyValue(iEntity, "classname", "gift");
 		DispatchKeyValueVector(iEntity, "origin", fPos);
 		KvGetString(hKeyValues, "Model", SZF(sBuffer));
 		DispatchKeyValue(iEntity, "model", sBuffer[0] ? sBuffer:g_sGlobalModel);
