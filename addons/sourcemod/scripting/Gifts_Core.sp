@@ -105,7 +105,7 @@ public OnConfigsExecuted()
 		{
 			do
 			{
-				IntToString(++g_iGiftsCount, sBuffer, 16);
+				IntToString(g_iGiftsCount++, sBuffer, 16);
 				KvSetSectionName(g_hKeyValues, sBuffer);
 				
 				Forward_OnLoadGift(g_iGiftsCount);
@@ -170,7 +170,7 @@ UTIL_ParseSound(const String:sKey[], String:sBuffer[], iMaxLen, const String:sDe
 	KvGetString(g_hKeyValues, sKey, sBuffer, iMaxLen);
 	if(sBuffer[0])
 	{
-		if(!strcmp(sBuffer, sSound) || !UTIL_LoadSound(sBuffer))
+		if(!strcmp(sBuffer, sDefaultSound) || !UTIL_LoadSound(sBuffer))
 		{
 			KvSetString(g_hKeyValues, sKey, NULL_STRING);
 		}
@@ -267,11 +267,21 @@ SpawnGift(iClient = 0, const Float:fPos[3], index = -1, Handle:hKeyValues)
 	#if DEBUG_MODE
 	DEBUG_PrintToAll("SpawnGift: %i", index);
 	#endif
-
-	new iEntity = CreateEntityByName("prop_physics_override");
-	if(iEntity)
+	
+	new iEntity = -1;
+	decl String:sBuffer[PMP];
+	KvGetString(hKeyValues, "PropType", SZF(sBuffer), "prop_physics_override");
+	if (StrEqual(sBuffer, "prop_physics_override") || StrEqual(sBuffer, "prop_dynamic_override") || StrEqual(sBuffer, "prop_physics_multiplayer") || StrEqual(sBuffer, "prop_dynamic") || StrEqual(sBuffer, "prop_physics"))
 	{
-		decl String:sTargetName[32], String:sBuffer[PMP];
+		iEntity = CreateEntityByName(sBuffer);
+	}
+	else
+	{
+		iEntity = CreateEntityByName("prop_physics_override");
+	}
+	if(iEntity != -1)
+	{
+		decl String:sTargetName[32];
 		FormatEx(SZF(sTargetName), "gift_%i_%i", iEntity, index);
 		#if DEBUG_MODE
 		DEBUG_PrintToAll("SpawnGift:: %s", sTargetName);
