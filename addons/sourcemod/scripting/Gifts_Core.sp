@@ -170,7 +170,7 @@ UTIL_ParseSound(const String:sKey[], String:sBuffer[], iMaxLen, const String:sDe
 	KvGetString(g_hKeyValues, sKey, sBuffer, iMaxLen);
 	if(sBuffer[0])
 	{
-		if(!strcmp(sBuffer, sSound) || !UTIL_LoadSound(sBuffer))
+		if(!strcmp(sBuffer, sDefaultSound) || !UTIL_LoadSound(sBuffer))
 		{
 			KvSetString(g_hKeyValues, sKey, NULL_STRING);
 		}
