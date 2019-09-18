@@ -37,6 +37,13 @@ new g_iGiftsCount,
 	String:g_sGlobalModel[128],
 	String:g_sGlobalSpawnSound[128],
 	String:g_sGlobalPickUpSound[128],
+	String:g_sPropType[][] = {
+		"prop_physics_override",
+		"prop_dynamic_override",
+		"prop_physics_multiplayer",
+		"prop_dynamic",
+		"prop_physics",
+	},
 	Float:g_fGlobalLifeTime,
 	bool:g_bFromDeath = false,
 	bool:g_bIsCSGO = false;
@@ -105,7 +112,7 @@ public OnConfigsExecuted()
 		{
 			do
 			{
-				IntToString(++g_iGiftsCount, sBuffer, 16);
+				IntToString(g_iGiftsCount++, sBuffer, 16);
 				KvSetSectionName(g_hKeyValues, sBuffer);
 				
 				Forward_OnLoadGift(g_iGiftsCount);
@@ -262,6 +269,18 @@ public Event_PlayerDeath(Handle:hEvent, const String:sEvName[], bool:bDontBroadc
 	}
 }
 
+bool:GetPropType(String:sBuffer[])
+{
+	for(new i = 0; i < sizeof(g_sPropType); i++)
+	{
+		if (StrEqual(sBuffer, g_sPropType[i]))
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
 SpawnGift(iClient = 0, const Float:fPos[3], index = -1, Handle:hKeyValues)
 {
 	#if DEBUG_MODE
@@ -271,13 +290,9 @@ SpawnGift(iClient = 0, const Float:fPos[3], index = -1, Handle:hKeyValues)
 	new iEntity = -1;
 	decl String:sBuffer[PMP];
 	KvGetString(hKeyValues, "PropType", SZF(sBuffer), "prop_physics_override");
-	if (StrEqual(sBuffer, "prop_physics_override") || StrEqual(sBuffer, "prop_dynamic_override") || StrEqual(sBuffer, "prop_physics_multiplayer") || StrEqual(sBuffer, "prop_dynamic") || StrEqual(sBuffer, "prop_physics"))
+	if(GetPropType(sBuffer))
 	{
 		iEntity = CreateEntityByName(sBuffer);
-	}
-	else
-	{
-		iEntity = CreateEntityByName("prop_physics_override");
 	}
 	if(iEntity != -1)
 	{
