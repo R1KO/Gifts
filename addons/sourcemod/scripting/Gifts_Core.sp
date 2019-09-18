@@ -48,6 +48,8 @@ new g_iGiftsCount,
 	bool:g_bFromDeath = false,
 	bool:g_bIsCSGO = false;
 
+new const String:g_szDefaultPropType[] = "prop_physics_override";
+
 public OnPluginStart()
 {
 	CreateConVar("sm_gifts_core_version", PLUGIN_VERSION, "GIFTS-CORE VERSION", FCVAR_SPONLY|FCVAR_REPLICATED|FCVAR_NOTIFY|FCVAR_CHEAT|FCVAR_DONTRECORD);
@@ -112,10 +114,16 @@ public OnConfigsExecuted()
 		{
 			do
 			{
-				IntToString(g_iGiftsCount++, sBuffer, 16);
+				IntToString(++g_iGiftsCount, sBuffer, 16);
 				KvSetSectionName(g_hKeyValues, sBuffer);
 				
 				Forward_OnLoadGift(g_iGiftsCount);
+
+				KvGetString(hKeyValues, "PropType", SZF(sBuffer));
+				if(!sBuffer[0] || !GetPropType(sBuffer))
+				{
+					KvSetString(hKeyValues, "PropType", g_szDefaultPropType);
+				}
 
 				KvGetString(g_hKeyValues, "Model", SZF(sBuffer));
 				if(sBuffer[0])
@@ -271,9 +279,9 @@ public Event_PlayerDeath(Handle:hEvent, const String:sEvName[], bool:bDontBroadc
 
 bool:GetPropType(String:sBuffer[])
 {
-	for(new i = 0; i < sizeof(g_sPropType); i++)
+	for(new i = 0; i < sizeof(g_sPropType); ++i)
 	{
-		if (StrEqual(sBuffer, g_sPropType[i]))
+		if (!strcmp(sBuffer, g_sPropType[i]))
 		{
 			return true;
 		}
@@ -287,13 +295,9 @@ SpawnGift(iClient = 0, const Float:fPos[3], index = -1, Handle:hKeyValues)
 	DEBUG_PrintToAll("SpawnGift: %i", index);
 	#endif
 	
-	new iEntity = -1;
-	decl String:sBuffer[PMP];
-	KvGetString(hKeyValues, "PropType", SZF(sBuffer), "prop_physics_override");
-	if(GetPropType(sBuffer))
-	{
-		iEntity = CreateEntityByName(sBuffer);
-	}
+	decl String:sBuffer[PMP], iEntity;
+	KvGetString(hKeyValues, "PropType", SZF(sBuffer));
+	iEntity = CreateEntityByName(sBuffer);
 	if(iEntity != -1)
 	{
 		decl String:sTargetName[32];
@@ -673,6 +677,7 @@ public Native_CreateGift(Handle:hPlugin, iNumParams)
 
 			if(Forward_OnCreateGift_Pre(iClient, hKeyValues) == Plugin_Continue)
 			{
+				// TODO: prepare "PropType"
 				return SpawnGift(iClient, fPos, iGift, hKeyValues);
 			}
 		}
