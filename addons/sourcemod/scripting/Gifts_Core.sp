@@ -37,18 +37,18 @@ new g_iGiftsCount,
 	String:g_sGlobalModel[128],
 	String:g_sGlobalSpawnSound[128],
 	String:g_sGlobalPickUpSound[128],
+	Float:g_fGlobalLifeTime,
+	bool:g_bFromDeath = false,
+	bool:g_bIsCSGO = false;
+
+new const String:g_szDefaultPropType[] = "prop_physics_override",
 	String:g_sPropType[][] = {
 		"prop_physics_override",
 		"prop_dynamic_override",
 		"prop_physics_multiplayer",
 		"prop_dynamic",
 		"prop_physics",
-	},
-	Float:g_fGlobalLifeTime,
-	bool:g_bFromDeath = false,
-	bool:g_bIsCSGO = false;
-
-new const String:g_szDefaultPropType[] = "prop_physics_override";
+	};
 
 public OnPluginStart()
 {
