@@ -37,13 +37,6 @@ new g_iGiftsCount,
 	String:g_sGlobalModel[128],
 	String:g_sGlobalSpawnSound[128],
 	String:g_sGlobalPickUpSound[128],
-	String:g_sPropType[][] = {
-		"prop_physics_override",
-		"prop_dynamic_override",
-		"prop_physics_multiplayer",
-		"prop_dynamic",
-		"prop_physics",
-	},
 	Float:g_fGlobalLifeTime,
 	bool:g_bFromDeath = false,
 	bool:g_bIsCSGO = false;
@@ -121,15 +114,15 @@ public OnConfigsExecuted()
 		{
 			do
 			{
-				IntToString(g_iGiftsCount++, sBuffer, 16);
+				IntToString(++g_iGiftsCount, sBuffer, 16);
 				KvSetSectionName(g_hKeyValues, sBuffer);
 				
 				Forward_OnLoadGift(g_iGiftsCount);
 
-				KvGetString(hKeyValues, "PropType", SZF(sBuffer));
+				KvGetString(g_hKeyValues, "PropType", SZF(sBuffer));
 				if(!sBuffer[0] || !GetPropType(sBuffer))
 				{
-					KvSetString(hKeyValues, "PropType", g_szDefaultPropType);
+					KvSetString(g_hKeyValues, "PropType", g_szDefaultPropType);
 				}
 
 				KvGetString(g_hKeyValues, "Model", SZF(sBuffer));
@@ -275,7 +268,7 @@ public Event_PlayerDeath(Handle:hEvent, const String:sEvName[], bool:bDontBroadc
 							decl Float:fPos[3];
 							GetClientAbsOrigin(iClient, fPos);
 							fPos[2] -= 40.0;
-							SpawnGift(iClient, fPos, iGift, g_hKeyValues);
+							SpawnGift(iClient, fPos, iGift);
 						}
 					}
 				}
@@ -296,14 +289,14 @@ bool:GetPropType(String:sBuffer[])
 	return false;
 }
 
-SpawnGift(iClient = 0, const Float:fPos[3], index = -1, Handle:hKeyValues)
+SpawnGift(iClient = 0, const Float:fPos[3], index = -1)
 {
 	#if DEBUG_MODE
 	DEBUG_PrintToAll("SpawnGift: %i", index);
 	#endif
 
 	decl String:sBuffer[PMP], iEntity;
-	KvGetString(hKeyValues, "PropType", SZF(sBuffer));
+	KvGetString(g_hKeyValues, "PropType", SZF(sBuffer));
 	if((iEntity = CreateEntityByName(sBuffer)) != -1)
 	{
 		decl String:sTargetName[32];
@@ -316,7 +309,7 @@ SpawnGift(iClient = 0, const Float:fPos[3], index = -1, Handle:hKeyValues)
 		DispatchKeyValue(iEntity, "massScale", "1.0");
 		// DispatchKeyValue(iEntity, "classname", "gift");
 		DispatchKeyValueVector(iEntity, "origin", fPos);
-		KvGetString(hKeyValues, "Model", SZF(sBuffer));
+		KvGetString(g_hKeyValues, "Model", SZF(sBuffer));
 		DispatchKeyValue(iEntity, "model", sBuffer[0] ? sBuffer:g_sGlobalModel);
 
 		DispatchKeyValue(iEntity, "targetname", sTargetName);
@@ -327,13 +320,13 @@ SpawnGift(iClient = 0, const Float:fPos[3], index = -1, Handle:hKeyValues)
 			
 		//	TeleportEntity(iEntity, fPos, NULL_VECTOR, NULL_VECTOR);
 
-			FormatEx(SZF(sBuffer), "OnUser1 !self:kill::%0.2f:-1", KvGetFloat(hKeyValues, "Lifetime", g_fGlobalLifeTime));
+			FormatEx(SZF(sBuffer), "OnUser1 !self:kill::%0.2f:-1", KvGetFloat(g_hKeyValues, "Lifetime", g_fGlobalLifeTime));
 			SetVariantString(sBuffer);
 			AcceptEntityInput(iEntity, "AddOutput"); 
 			AcceptEntityInput(iEntity, "FireUser1");
 			SetEntPropEnt(iEntity, Prop_Send, "m_hOwnerEntity", iClient);
 
-			new iRotate = KvGetNum(hKeyValues, "Rotate");
+			new iRotate = KvGetNum(g_hKeyValues, "Rotate");
 			if(iRotate)
 			{
 				new iRotating = CreateEntityByName("func_rotating");
@@ -366,28 +359,28 @@ SpawnGift(iClient = 0, const Float:fPos[3], index = -1, Handle:hKeyValues)
 				SetEntityMoveType(iEntity, MOVETYPE_NONE);
 			}
 			
-			if(KvJumpToKey(hKeyValues, "Animations"))
+			if(KvJumpToKey(g_hKeyValues, "Animations"))
 			{
-				if(KvGotoFirstSubKey(hKeyValues, false))
+				if(KvGotoFirstSubKey(g_hKeyValues, false))
 				{
 					decl String:szAnimation[64];
 					do
 					{
-						KvGetString(hKeyValues, NULL_STRING, SZF(szAnimation));
+						KvGetString(g_hKeyValues, NULL_STRING, SZF(szAnimation));
 						SetVariantString(szAnimation);
 						AcceptEntityInput(iEntity, "SetAnimation");
-					} while (KvGotoNextKey(hKeyValues, false));
-					KvGoBack(hKeyValues);
+					} while (KvGotoNextKey(g_hKeyValues, false));
+					KvGoBack(g_hKeyValues);
 				}
-				KvGoBack(hKeyValues);
+				KvGoBack(g_hKeyValues);
 			}
 
 			SDKHook(iEntity, SDKHook_StartTouchPost, Hook_GiftStartTouchPost);
 	
-			KvGetString(hKeyValues, "SpawnSound", SZF(sBuffer));
+			KvGetString(g_hKeyValues, "SpawnSound", SZF(sBuffer));
 			EmitAmbientSound(sBuffer[0] ? sBuffer:g_sGlobalSpawnSound, fPos, iEntity, SNDLEVEL_NORMAL);
 
-			Forward_OnCreateGift_Post(iClient, iEntity, hKeyValues);
+			Forward_OnCreateGift_Post(iClient, iEntity, g_hKeyValues);
 
 			return iEntity;
 		}
@@ -421,74 +414,84 @@ public Hook_GiftStartTouchPost(iEntity, iClient)
 			#if DEBUG_MODE
 			DEBUG_PrintToAll("Hook_GiftStartTouch: index: %s, Client: %i", sIndex, iClient);
 			#endif
-			switch (Forward_OnPickUpGift_Pre(iClient))
+			//	LogMessage("PickUpGift: '%s'", sIndex[5]);
+			OnClientPickUpGift(iClient, iEntity);
+			if (KvGetNum(g_hKeyValues, "is_custom"))
 			{
-			case Plugin_Handled:
+				KvRewind(g_hKeyValues);
+				KvDeleteKey(g_hKeyValues, sIndex);
+			}
+		}
+	}
+}
+
+OnClientPickUpGift(iClient, iEntity)
+{
+	switch (Forward_OnPickUpGift_Pre(iClient))
+	{
+	case Plugin_Handled:
+		{
+			#if DEBUG_MODE
+			DEBUG_PrintToAll("Plugin_Handled");
+			#endif
+			return;
+		}
+	case Plugin_Stop:
+		{
+			#if DEBUG_MODE
+			DEBUG_PrintToAll("Plugin_Stop");
+			#endif
+			
+			KillGift(iEntity);
+			return;
+		}
+	case Plugin_Continue:
+		{
+			#if DEBUG_MODE
+			DEBUG_PrintToAll("Plugin_Continue");
+			#endif
+
+			decl String:sBuffer[PMP], Float:fPos[3];
+
+			GetClientAbsOrigin(iClient, Float:fPos);
+			KvGetString(g_hKeyValues, "PickUpSound", SZF(sBuffer));
+			EmitAmbientSound(sBuffer[0] ? sBuffer:g_sGlobalPickUpSound, fPos, iEntity, SNDLEVEL_NORMAL);
+
+			
+			KvGetString(g_hKeyValues, "TextToAll", SZF(sBuffer));
+			#if DEBUG_MODE
+			DEBUG_PrintToAll("TextToAll = '%s'", sBuffer);
+			#endif
+			//	LogMessage("TextToAll: '%s'", sBuffer);
+			if(sBuffer[0])
+			{
+			//	EditText(SZF(sBuffer));
+				ReplaceName(SZF(sBuffer), iClient);
+				EditText(SZF(sBuffer));
+				//	LogMessage("TextToAll: '%s'", sBuffer);
+				for (new i = 1; i <= MCL; ++i)
 				{
-					#if DEBUG_MODE
-					DEBUG_PrintToAll("Plugin_Handled");
-					#endif
-					return;
-				}
-			case Plugin_Stop:
-				{
-					#if DEBUG_MODE
-					DEBUG_PrintToAll("Plugin_Stop");
-					#endif
-					
-					KillGift(iEntity);
-					return;
-				}
-			case Plugin_Continue:
-				{
-					#if DEBUG_MODE
-					DEBUG_PrintToAll("Plugin_Continue");
-					#endif
-
-					decl String:sBuffer[PMP], Float:fPos[3];
-
-					GetClientAbsOrigin(iClient, Float:fPos);
-					KvGetString(g_hKeyValues, "PickUpSound", SZF(sBuffer));
-					EmitAmbientSound(sBuffer[0] ? sBuffer:g_sGlobalPickUpSound, fPos, iEntity, SNDLEVEL_NORMAL);
-
-					//	LogMessage("PickUpGift: '%s'", sIndex[5]);
-					
-					KvGetString(g_hKeyValues, "TextToAll", SZF(sBuffer));
-					#if DEBUG_MODE
-					DEBUG_PrintToAll("TextToAll = '%s'", sBuffer);
-					#endif
-					//	LogMessage("TextToAll: '%s'", sBuffer);
-					if(sBuffer[0])
-					{
-					//	EditText(SZF(sBuffer));
-						ReplaceName(SZF(sBuffer), iClient);
-						EditText(SZF(sBuffer));
-						//	LogMessage("TextToAll: '%s'", sBuffer);
-						for (new i = 1; i <= MCL; ++i)
-						{
-							if (i != iClient && IsClientInGame(i) && !IsFakeClient(i)) PrintToChat(i, sBuffer);
-						}
-					}
-
-					KvGetString(g_hKeyValues, "TextToPlayer", SZF(sBuffer));
-					#if DEBUG_MODE
-					DEBUG_PrintToAll("TextToPlayer = '%s'", sBuffer);
-					#endif
-					//	LogMessage("TextToPlayer: '%s'", sBuffer);
-					if(sBuffer[0])
-					{
-					//	EditText(SZF(sBuffer));
-						ReplaceName(SZF(sBuffer), iClient);
-						EditText(SZF(sBuffer));
-						//	LogMessage("TextToPlayer: '%s'", sBuffer);
-						PrintToChat(iClient, sBuffer);
-					}
-					
-					KillGift(iEntity);
-					
-					Forward_OnPickUpGift_Post(iClient);
+					if (i != iClient && IsClientInGame(i) && !IsFakeClient(i)) PrintToChat(i, sBuffer);
 				}
 			}
+
+			KvGetString(g_hKeyValues, "TextToPlayer", SZF(sBuffer));
+			#if DEBUG_MODE
+			DEBUG_PrintToAll("TextToPlayer = '%s'", sBuffer);
+			#endif
+			//	LogMessage("TextToPlayer: '%s'", sBuffer);
+			if(sBuffer[0])
+			{
+			//	EditText(SZF(sBuffer));
+				ReplaceName(SZF(sBuffer), iClient);
+				EditText(SZF(sBuffer));
+				//	LogMessage("TextToPlayer: '%s'", sBuffer);
+				PrintToChat(iClient, sBuffer);
+			}
+			
+			KillGift(iEntity);
+			
+			Forward_OnPickUpGift_Post(iClient);
 		}
 	}
 }
@@ -668,7 +671,7 @@ public Native_CreateGift(Handle:hPlugin, iNumParams)
 			{
 				if(Forward_OnCreateGift_Pre(iClient, g_hKeyValues) == Plugin_Continue)
 				{
-					return SpawnGift(iClient, fPos, iGift, g_hKeyValues);
+					return SpawnGift(iClient, fPos, iGift);
 				}
 			}
 		}
@@ -683,8 +686,22 @@ public Native_CreateGift(Handle:hPlugin, iNumParams)
 
 			if(Forward_OnCreateGift_Pre(iClient, hKeyValues) == Plugin_Continue)
 			{
-				// TODO: prepare "PropType"
-				return SpawnGift(iClient, fPos, iGift, hKeyValues);
+				decl String:sBuffer[32];
+				FormatEx(SZF(sBuffer), "%x%x%x", hPlugin, GetTime(), Math_GetRandomInt(1, 100));
+				KvRewind(g_hKeyValues);
+				if(!KvJumpToKey(g_hKeyValues, sBuffer, true))
+				{
+					return -1;
+				}
+
+				KvCopySubkeys(hKeyValues, g_hKeyValues);
+				KvGetString(g_hKeyValues, "PropType", SZF(sBuffer));
+				if(!sBuffer[0] || !GetPropType(sBuffer))
+				{
+					KvSetString(g_hKeyValues, "PropType", g_szDefaultPropType);
+				}
+
+				return SpawnGift(iClient, fPos, iGift);
 			}
 		}
 		default:
