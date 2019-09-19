@@ -41,6 +41,15 @@ new g_iGiftsCount,
 	bool:g_bFromDeath = false,
 	bool:g_bIsCSGO = false;
 
+new const String:g_szDefaultPropType[] = "prop_physics_override",
+	String:g_sPropType[][] = {
+		"prop_physics_override",
+		"prop_dynamic_override",
+		"prop_physics_multiplayer",
+		"prop_dynamic",
+		"prop_physics",
+	};
+
 public OnPluginStart()
 {
 	CreateConVar("sm_gifts_core_version", PLUGIN_VERSION, "GIFTS-CORE VERSION", FCVAR_SPONLY|FCVAR_REPLICATED|FCVAR_NOTIFY|FCVAR_CHEAT|FCVAR_DONTRECORD);
@@ -109,6 +118,12 @@ public OnConfigsExecuted()
 				KvSetSectionName(g_hKeyValues, sBuffer);
 				
 				Forward_OnLoadGift(g_iGiftsCount);
+
+				KvGetString(hKeyValues, "PropType", SZF(sBuffer));
+				if(!sBuffer[0] || !GetPropType(sBuffer))
+				{
+					KvSetString(hKeyValues, "PropType", g_szDefaultPropType);
+				}
 
 				KvGetString(g_hKeyValues, "Model", SZF(sBuffer));
 				if(sBuffer[0])
@@ -262,16 +277,30 @@ public Event_PlayerDeath(Handle:hEvent, const String:sEvName[], bool:bDontBroadc
 	}
 }
 
+bool:GetPropType(String:sBuffer[])
+{
+	for(new i = 0; i < sizeof(g_sPropType); ++i)
+	{
+		if (!strcmp(sBuffer, g_sPropType[i]))
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
 SpawnGift(iClient = 0, const Float:fPos[3], index = -1, Handle:hKeyValues)
 {
 	#if DEBUG_MODE
 	DEBUG_PrintToAll("SpawnGift: %i", index);
 	#endif
-
-	new iEntity = CreateEntityByName("prop_physics_override");
-	if(iEntity)
+	
+	decl String:sBuffer[PMP], iEntity;
+	KvGetString(hKeyValues, "PropType", SZF(sBuffer));
+	iEntity = CreateEntityByName(sBuffer);
+	if(iEntity != -1)
 	{
-		decl String:sTargetName[32], String:sBuffer[PMP];
+		decl String:sTargetName[32];
 		FormatEx(SZF(sTargetName), "gift_%i_%i", iEntity, index);
 		#if DEBUG_MODE
 		DEBUG_PrintToAll("SpawnGift:: %s", sTargetName);
@@ -648,6 +677,7 @@ public Native_CreateGift(Handle:hPlugin, iNumParams)
 
 			if(Forward_OnCreateGift_Pre(iClient, hKeyValues) == Plugin_Continue)
 			{
+				// TODO: prepare "PropType"
 				return SpawnGift(iClient, fPos, iGift, hKeyValues);
 			}
 		}
