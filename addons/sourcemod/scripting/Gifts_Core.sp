@@ -289,7 +289,7 @@ bool:GetPropType(String:sBuffer[])
 	return false;
 }
 
-SpawnGift(iClient = 0, const Float:fPos[3], index = -1)
+SpawnGift(iClient = 0, const Float:fPos[3], index = -1, Handle:hKeyValues = null)
 {
 	#if DEBUG_MODE
 	DEBUG_PrintToAll("SpawnGift: %i", index);
@@ -300,7 +300,22 @@ SpawnGift(iClient = 0, const Float:fPos[3], index = -1)
 	if((iEntity = CreateEntityByName(sBuffer)) != -1)
 	{
 		decl String:sTargetName[32];
-		FormatEx(SZF(sTargetName), "gift_%i_%i", iEntity, index);
+		if (!index)
+		{
+			if (hKeyValues == null)
+			{
+				#if DEBUG_MODE
+				DEBUG_PrintToAll("SpawnGift:: Error: hKeyValues = null, iEntity: %d", iEntity);
+				#endif
+				return -1;
+			}
+			KvGetSectionName(hKeyValues, SZF(sBuffer));
+		}
+		else
+		{
+			IntToString(index, SZF(sBuffer));
+		}
+		FormatEx(SZF(sTargetName), "gift_%i_%s", iEntity, sBuffer);
 		#if DEBUG_MODE
 		DEBUG_PrintToAll("SpawnGift:: %s", sTargetName);
 		#endif
@@ -694,6 +709,7 @@ public Native_CreateGift(Handle:hPlugin, iNumParams)
 					return -1;
 				}
 
+				KvSetSectionName(hKeyValues, sBuffer);
 				KvCopySubkeys(hKeyValues, g_hKeyValues);
 				KvGetString(g_hKeyValues, "PropType", SZF(sBuffer));
 				if(!sBuffer[0] || !GetPropType(sBuffer))
@@ -701,7 +717,7 @@ public Native_CreateGift(Handle:hPlugin, iNumParams)
 					KvSetString(g_hKeyValues, "PropType", g_szDefaultPropType);
 				}
 
-				return SpawnGift(iClient, fPos, iGift);
+				return SpawnGift(iClient, fPos, iGift, hKeyValues);
 			}
 		}
 		default:
