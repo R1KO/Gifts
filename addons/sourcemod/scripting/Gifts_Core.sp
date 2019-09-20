@@ -268,7 +268,7 @@ public Event_PlayerDeath(Handle:hEvent, const String:sEvName[], bool:bDontBroadc
 							decl Float:fPos[3];
 							GetClientAbsOrigin(iClient, fPos);
 							fPos[2] -= 40.0;
-							SpawnGift(iClient, fPos, iGift);
+							SpawnGift(iClient, fPos);
 						}
 					}
 				}
@@ -289,7 +289,7 @@ bool:GetPropType(String:sBuffer[])
 	return false;
 }
 
-SpawnGift(iClient = 0, const Float:fPos[3], index = -1, Handle:hKeyValues = null)
+SpawnGift(iClient = 0, const Float:fPos[3])
 {
 	#if DEBUG_MODE
 	DEBUG_PrintToAll("SpawnGift: %i", index);
@@ -299,22 +299,8 @@ SpawnGift(iClient = 0, const Float:fPos[3], index = -1, Handle:hKeyValues = null
 	KvGetString(g_hKeyValues, "PropType", SZF(sBuffer));
 	if((iEntity = CreateEntityByName(sBuffer)) != -1)
 	{
+		KvGetSectionName(hKeyValues, SZF(sBuffer));
 		decl String:sTargetName[32];
-		if (!index)
-		{
-			if (hKeyValues == null)
-			{
-				#if DEBUG_MODE
-				DEBUG_PrintToAll("SpawnGift:: Error: hKeyValues = null, iEntity: %d", iEntity);
-				#endif
-				return -1;
-			}
-			KvGetSectionName(hKeyValues, SZF(sBuffer));
-		}
-		else
-		{
-			IntToString(index, SZF(sBuffer));
-		}
 		FormatEx(SZF(sTargetName), "gift_%i_%s", iEntity, sBuffer);
 		#if DEBUG_MODE
 		DEBUG_PrintToAll("SpawnGift:: %s", sTargetName);
@@ -686,7 +672,7 @@ public Native_CreateGift(Handle:hPlugin, iNumParams)
 			{
 				if(Forward_OnCreateGift_Pre(iClient, g_hKeyValues) == Plugin_Continue)
 				{
-					return SpawnGift(iClient, fPos, iGift);
+					return SpawnGift(iClient, fPos);
 				}
 			}
 		}
@@ -709,7 +695,6 @@ public Native_CreateGift(Handle:hPlugin, iNumParams)
 					return -1;
 				}
 
-				KvSetSectionName(hKeyValues, sBuffer);
 				KvCopySubkeys(hKeyValues, g_hKeyValues);
 				KvGetString(g_hKeyValues, "PropType", SZF(sBuffer));
 				if(!sBuffer[0] || !GetPropType(sBuffer))
@@ -717,7 +702,7 @@ public Native_CreateGift(Handle:hPlugin, iNumParams)
 					KvSetString(g_hKeyValues, "PropType", g_szDefaultPropType);
 				}
 
-				return SpawnGift(iClient, fPos, iGift, hKeyValues);
+				return SpawnGift(iClient, fPos);
 			}
 		}
 		default:
@@ -729,7 +714,7 @@ public Native_CreateGift(Handle:hPlugin, iNumParams)
 			{
 				if(Forward_OnCreateGift_Pre(iClient, g_hKeyValues) == Plugin_Continue)
 				{
-					return SpawnGift(iClient, fPos, iGift, g_hKeyValues);
+					return SpawnGift(iClient, fPos);
 				}
 			}
 		}
