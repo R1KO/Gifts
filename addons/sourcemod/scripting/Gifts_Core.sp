@@ -299,7 +299,7 @@ SpawnGift(iClient = 0, const Float:fPos[3])
 	KvGetString(g_hKeyValues, "PropType", SZF(sBuffer));
 	if((iEntity = CreateEntityByName(sBuffer)) != -1)
 	{
-		KvGetSectionName(hKeyValues, SZF(sBuffer));
+		KvGetSectionName(g_hKeyValues, SZF(sBuffer));
 		decl String:sTargetName[32];
 		FormatEx(SZF(sTargetName), "gift_%i_%s", iEntity, sBuffer);
 		#if DEBUG_MODE
