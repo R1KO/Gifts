@@ -644,7 +644,7 @@ public Native_CreateGift(Handle:hPlugin, iNumParams)
 		ThrowNativeError(SP_ERROR_NATIVE, "Некорректный индекс игрока (%d)", iClient);
 		return -1;
 	}
-	if(!IsClientInGame(iClient))
+	if(iClient && !IsClientInGame(iClient))
 	{
 		ThrowNativeError(SP_ERROR_NATIVE, "Игрок %d не подключен", iClient);
 		return -1;
