@@ -482,6 +482,10 @@ void DEBUG_PrintToClient(DEBUG_LEVEL dLevel, int iClient, const char[] sMsg, any
 	{
 		LogError("%s", sBuffer);
 	}
+	else
+	{
+		LogToFile("addons/sourcemod/logs/"...PLUGIN_VALUE_UP_TOTAL...".log", "%s", sBuffer);
+	}
 	#endif
 	DebugMessage(dLevel, iClient, "%s", sBuffer)
 }
